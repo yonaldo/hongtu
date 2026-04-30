@@ -1,0 +1,1309 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鸿图之下武将数据分析工具</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif; background:#0d1117; color:#e6edf3; font-size:14px; }
+  
+  /* ===== 顶部标题 ===== */
+  .header { background:linear-gradient(135deg,#c0392b,#8e44ad); padding:16px 16px 14px; text-align:center; }
+  .header h1 { font-size:20px; font-weight:700; color:#fff; letter-spacing:1px; }
+  .header p { color:rgba(255,255,255,0.75); font-size:12px; margin-top:4px; }
+  
+  /* ===== 统计卡片 ===== */
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:10px 10px 0; }
+  .stat-card { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:8px 6px; text-align:center; }
+  .stat-card .val { font-size:18px; font-weight:700; color:#58a6ff; }
+  .stat-card .lbl { font-size:10px; color:#8b949e; margin-top:2px; }
+  
+  /* ===== Tab导航 ===== */
+  .tabs { display:flex; padding:8px 8px 0; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tabs::-webkit-scrollbar { display:none; }
+  .tab { flex:1; min-width:70px; padding:8px 4px; background:#21262d; border:1px solid #30363d; border-bottom:none; border-radius:8px 8px 0 0; text-align:center; font-size:12px; color:#8b949e; cursor:pointer; white-space:nowrap; transition:all .2s; }
+  .tab.active { background:#1f6feb22; border-color:#1f6feb; color:#1f6feb; font-weight:600; }
+  
+  /* ===== 内容区 ===== */
+  .content { display:none; padding:10px; }
+  .content.active { display:block; }
+  
+  /* ===== 筛选栏 ===== */
+  .filters { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  select, input[type=text] { background:#0d1117; border:1px solid #30363d; color:#e6edf3; border-radius:6px; padding:6px 8px; font-size:13px; outline:none; }
+  select:focus, input:focus { border-color:#1f6feb; }
+  
+  /* ===== 排行榜 ===== */
+  .rank-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .rank-table th { background:#21262d; color:#8b949e; padding:7px 6px; text-align:center; border:1px solid #30363d; position:sticky; top:0; font-weight:600; }
+  .rank-table td { padding:6px 6px; text-align:center; border:1px solid #21262d; }
+  .rank-table tr:nth-child(even) td { background:#161b22; }
+  .rank-table tr:hover td { background:#1f6feb22; }
+  .rank-table tr.top3 td:first-child { font-weight:700; }
+  .rank-num { font-weight:700; font-size:13px; }
+  .rank-1 { color:#ffd700; } .rank-2 { color:#c0c0c0; } .rank-3 { color:#cd7f32; }
+  .faction-tag { display:inline-block; padding:1px 5px; border-radius:4px; font-size:10px; }
+  .faction-魏 { background:#e8f5e9; color:#2e7d32; } .faction-蜀 { background:#e3f2fd; color:#1565c0; }
+  .faction-吴 { background:#fff8e1; color:#f57f17; } .faction-群 { background:#fce4ec; color:#c62828; }
+  .faction-神 { background:#f3e5f5; color:#6a1b9a; } .faction-其他 { background:#eceff1; color:#455a64; }
+  
+  /* ===== 搜索 ===== */
+  .hero-detail { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:14px; margin-bottom:10px; }
+  .hero-name { font-size:17px; font-weight:700; margin-bottom:6px; }
+  .hero-meta { font-size:12px; color:#8b949e; margin-bottom:10px; }
+  .hero-meta span { margin-right:10px; }
+  .skill-block { background:#0d1117; border-radius:6px; padding:8px 10px; margin-bottom:8px; }
+  .skill-name { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .skill-desc { font-size:12px; color:#8b949e; line-height:1.5; }
+  .skill-qual-S { color:#ffd700; } .skill-qual-A { color:#c0c0c0; }
+  
+  /* ===== 武技表格 ===== */
+  .skill-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:auto; }
+  .skill-table th { background:#21262d; color:#8b949e; padding:7px 6px; text-align:center; border:1px solid #30363d; position:sticky; top:0; font-weight:600; white-space:nowrap; }
+  .skill-table td { padding:6px 8px; text-align:center; border:1px solid #21262d; vertical-align:top; }
+  .skill-table tr:nth-child(even) td { background:#161b22; }
+  .skill-table tr:hover td { background:#1f6feb22; }
+  .skill-grade { display:inline-block; width:20px; height:20px; border-radius:4px; font-weight:700; line-height:20px; }
+  .grade-S { background:#ffd700; color:#000; }
+  .grade-A { background:#c0c0c0; color:#000; }
+  .grade-B { background:#cd7f32; color:#fff; }
+  .grade-C { background:#666; color:#fff; }
+  .skill-icon { width:32px; height:32px; border-radius:4px; }
+  .skill-type { display:inline-block; padding:1px 5px; border-radius:4px; font-size:10px; }
+  .type-主动 { background:#f85149; color:#fff; }
+  .type-连击 { background:#58a6ff; color:#fff; }
+  .type-指挥 { background:#a371f7; color:#fff; }
+  .type-被动 { background:#3fb950; color:#fff; }
+  .type-内政 { background:#6e7681; color:#fff; }
+  .type-阵型 { background:#d29922; color:#000; }
+  .type-兵法 { background:#238636; color:#fff; }
+  .skill-tag { display:inline-block; padding:1px 4px; background:#30363d; border-radius:3px; font-size:9px; margin:1px; color:#8b949e; }
+  
+  /* ===== 雷达图 ===== */
+  .radar-wrap { width:100%; height:280px; }
+  
+  /* ===== 对比 ===== */
+  .compare-wrap { width:100%; height:300px; }
+  .diff-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+  .diff-table th, .diff-table td { padding:5px 8px; text-align:center; border:1px solid #30363d; }
+  .diff-table th { background:#21262d; color:#8b949e; }
+  .diff-pos { color:#3fb950; } .diff-neg { color:#f85149; } .diff-zero { color:#8b949e; }
+  
+  /* ===== 缘分 ===== */
+  .bond-list { display:grid; grid-template-columns:1fr; gap:8px; }
+  .bond-item { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 12px; }
+  .bond-title { font-size:14px; font-weight:600; margin-bottom:4px; }
+  .bond-members { font-size:12px; color:#8b949e; line-height:1.6; }
+  
+  /* ===== 雷达图2(详情页) ===== */
+  .detail-radar { width:100%; height:250px; margin:10px 0; }
+  
+  /* ===== 六维卡片 ===== */
+  .attr-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; }
+  .attr-card { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:6px 4px; text-align:center; }
+  .attr-card .aname { font-size:10px; color:#8b949e; }
+  .attr-card .aval { font-size:15px; font-weight:700; color:#58a6ff; }
+  .attr-card .agrow { font-size:10px; color:#3fb950; }
+  
+  /* ===== 页脚 ===== */
+  .footer { text-align:center; padding:20px 10px; color:#484f58; font-size:11px; }
+
+  /* ===== 配将系统 ===== */
+  .team-container { display:flex; flex-direction:column; gap:12px; margin-bottom:15px; }
+  .team-hero-row { display:flex; align-items:center; gap:10px; background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px; }
+  .team-hero-label { width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:#21262d; border-radius:6px; font-size:12px; font-weight:600; color:#8b949e; flex-shrink:0; }
+  .team-hero-slot { width:70px; height:70px; background:#0d1117; border:2px dashed #30363d; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .2s; flex-shrink:0; }
+  .team-hero-slot:hover { border-color:#58a6ff; background:#1f6feb22; }
+  .team-hero-slot.filled { border-style:solid; border-color:#30363d; }
+  .team-hero-empty { font-size:28px; color:#30363d; }
+  .team-hero-content { text-align:center; }
+  .team-hero-img { width:50px; height:50px; border-radius:6px; object-fit:cover; }
+  .team-hero-name { font-size:11px; margin-top:2px; color:#e6edf3; }
+  .team-skills { flex:1; display:flex; gap:8px; flex-wrap:wrap; }
+  .team-skill-item { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 12px; font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer; transition:all .2s; }
+  .team-skill-item:hover { border-color:#58a6ff; }
+  .team-skill-innate { color:#ffd700; border-color:#ffd70044; background:#ffd70011; }
+  .team-skill-leader { color:#ff6b35; border-color:#ff6b3544; background:#ff6b3511; font-weight:600; }
+  .team-skill-leader-disabled { color:#484f58; border-color:#30363d; background:#21262d; }
+  .team-skill-select { color:#8b949e; }
+  .team-skill-select.filled { color:#e6edf3; border-color:#58a6ff; background:#1f6feb22; }
+  .team-stats { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:12px; margin-bottom:15px; }
+  .team-stats-title { font-size:14px; font-weight:600; margin-bottom:10px; color:#e6edf3; }
+  .team-stats-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .team-stats-table th { background:#21262d; color:#8b949e; padding:8px 6px; text-align:center; border:1px solid #30363d; }
+  .team-stats-table td { padding:8px 6px; text-align:center; border:1px solid #21262d; }
+  .team-bonds { display:flex; flex-wrap:wrap; gap:8px; }
+  .team-bond-item { background:#1f6feb22; border:1px solid #1f6feb; border-radius:6px; padding:6px 12px; font-size:12px; color:#58a6ff; }
+  .team-bond-inactive { background:#21262d; border-color:#30363d; color:#8b949e; }
+  
+
+  /* ===== 表格列宽拖动 ===== */
+  #rankTable { table-layout:fixed; border-collapse:separate; border-spacing:0; width:100%; }
+  #rankTable th, #rankTable td { padding:8px 12px; text-align:center; border:1px solid #21262d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #rankTable th { background:#161b22; color:#e6edf3; font-weight:600; font-size:13px; position:sticky; top:0; z-index:10; }
+  .sortable-th { user-select:none; transition:background .15s; }
+  .sortable-th:hover { background:#21262d !important; }
+  .resize-handle { width:6px !important; min-width:6px !important; max-width:6px !important; padding:0 !important; border:none !important; background:#21262d; cursor:col-resize; position:relative; }
+  .resize-handle:hover, .resize-handle:active { background:#58a6ff; }
+  /* 表头最后一列去除右边框 */
+  #rankTable thead th:last-of-type { border-right:none; }
+  #rankTable tbody td:last-of-type { border-right:none; }
+  /* ===== 武将模拟对战 ===== */
+  .compare-selector { display:flex; align-items:center; justify-content:center; gap:15px; margin-bottom:20px; }
+  .compare-select-group { text-align:center; }
+  .compare-select-group label { display:block; font-size:12px; color:#8b949e; margin-bottom:5px; }
+  .compare-select-group select { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 15px; color:#e6edf3; font-size:14px; min-width:160px; outline:none; }
+  .compare-select-group select:focus { border-color:#58a6ff; }
+  .compare-vs { font-size:20px; font-weight:700; color:#ffd700; text-shadow:0 0 10px rgba(255,215,0,0.5); }
+  .compare-overview { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:20px; margin-bottom:15px; }
+  .compare-power-bar { display:flex; align-items:center; gap:15px; margin-bottom:15px; }
+  .compare-power-side { width:100px; text-align:center; }
+  .compare-power-side img { width:60px; height:60px; border-radius:8px; border:2px solid #30363d; }
+  .compare-power-side .name { font-size:14px; font-weight:600; margin-top:5px; }
+  .compare-power-track { flex:1; height:30px; background:#21262d; border-radius:15px; position:relative; overflow:hidden; }
+  .compare-power-fill { height:100%; border-radius:15px; transition:width .5s ease; display:flex; align-items:center; justify-content:center; }
+  .compare-power-fill.left { background:linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .compare-power-fill.right { background:linear-gradient(90deg,#f97316,#fb923c); }
+  .compare-power-score { font-size:14px; font-weight:700; color:#fff; }
+  .compare-power-label { text-align:center; font-size:12px; color:#8b949e; margin-bottom:10px; }
+  .compare-power-result { text-align:center; font-size:16px; font-weight:600; padding:10px; border-radius:8px; }
+  .compare-power-result.win { background:#22c55e22; color:#22c55e; border:1px solid #22c55e; }
+  .compare-power-result.lose { background:#ef444422; color:#ef4444; border:1px solid #ef4444; }
+  .compare-power-result.draw { background:#ffd70022; color:#ffd700; border:1px solid #ffd700; }
+  .compare-attrs { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px; }
+  .compare-attr-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:15px; }
+  .compare-attr-title { font-size:14px; font-weight:600; margin-bottom:10px; color:#e6edf3; }
+  .compare-attr-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .compare-attr-label { width:50px; font-size:12px; color:#8b949e; }
+  .compare-attr-track { flex:1; height:16px; background:#21262d; border-radius:8px; position:relative; }
+  .compare-attr-fill { height:100%; border-radius:8px; }
+  .compare-attr-fill.blue { background:linear-gradient(90deg,#3b82f6,#60a5fa); }
+  .compare-attr-fill.orange { background:linear-gradient(90deg,#f97316,#fb923c); }
+  .compare-attr-val { font-size:12px; font-weight:600; color:#e6edf3; min-width:60px; text-align:right; }
+  .compare-attr-diff { font-size:11px; padding:3px 8px; border-radius:4px; margin-left:5px; }
+  .compare-attr-diff.positive { background:#22c55e22; color:#22c55e; }
+  .compare-attr-diff.negative { background:#ef444422; color:#ef4444; }
+  .compare-attr-diff.neutral { background:#21262d; color:#8b949e; }
+  .compare-detail { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:15px; margin-bottom:15px; }
+  .compare-detail-title { font-size:14px; font-weight:600; margin-bottom:12px; color:#e6edf3; }
+  .compare-detail-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .compare-detail-table th { background:#21262d; color:#8b949e; padding:10px 8px; text-align:center; border:1px solid #30363d; font-weight:600; }
+  .compare-detail-table td { padding:10px 8px; text-align:center; border:1px solid #21262d; }
+  .compare-detail-table td:first-child { text-align:left; color:#e6edf3; font-weight:600; }
+  .compare-detail-table .val-blue { color:#60a5fa; font-weight:600; }
+  .compare-detail-table .val-orange { color:#fb923c; font-weight:600; }
+  .compare-detail-table .diff-positive { color:#22c55e; }
+  .compare-detail-table .diff-negative { color:#ef4444; }
+  .compare-detail-table .diff-neutral { color:#8b949e; }
+  .compare-bonus { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .compare-bonus-item { background:#21262d; border-radius:6px; padding:6px 10px; font-size:11px; }
+  .compare-bonus-item.skill { border-left:3px solid #ffd700; }
+  .compare-bonus-item.bond { border-left:3px solid #58a6ff; }
+  /* 选择弹窗 */
+  .picker-modal { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:2000; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .picker-content { background:#0d1117; border-radius:12px; width:100%; max-width:500px; max-height:80vh; overflow-y:auto; padding:15px; }
+  .picker-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+  .picker-title { font-size:16px; font-weight:600; }
+  .picker-close { background:#21262d; border:1px solid #30363d; color:#e6edf3; padding:5px 12px; border-radius:6px; cursor:pointer; }
+  .picker-search { width:100%; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:10px; color:#e6edf3; margin-bottom:15px; outline:none; }
+  .picker-search:focus { border-color:#58a6ff; }
+  .picker-filters { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .picker-filters select { background:#161b22; border:1px solid #30363d; color:#e6edf3; border-radius:6px; padding:6px 8px; font-size:12px; outline:none; }
+  .picker-filters select:focus { border-color:#58a6ff; }
+  .picker-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .picker-hero { text-align:center; cursor:pointer; padding:8px; border-radius:8px; transition:all .2s; }
+  .picker-hero:hover { background:#1f6feb22; }
+  .picker-hero-img { width:50px; height:50px; border-radius:6px; object-fit:cover; margin-bottom:4px; }
+  .picker-hero-name { font-size:11px; color:#e6edf3; }
+  .picker-skill-list { display:flex; flex-direction:column; gap:8px; }
+  .picker-skill { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px; cursor:pointer; transition:all .2s; }
+  .picker-skill:hover { border-color:#58a6ff; background:#1f6feb11; }
+  .picker-skill-name { font-weight:600; margin-bottom:4px; }
+  .picker-skill-meta { font-size:11px; color:#8b949e; }
+  .picker-skill-desc { font-size:11px; color:#8b949e; margin-top:4px; line-height:1.4; }
+  .team-save-bar { display:flex; gap:8px; margin-top:15px; align-items:center; flex-wrap:wrap; }
+  .team-save-input { flex:1; min-width:120px; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 12px; color:#e6edf3; font-size:12px; outline:none; }
+  .team-save-input:focus { border-color:#58a6ff; }
+  .team-save-btn { background:#238636; border:1px solid #238636; color:#fff; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+  .team-save-btn:hover { background:#2ea043; }
+  .team-load-select { flex:1; min-width:120px; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 12px; color:#e6edf3; font-size:12px; }
+  .team-delete-btn { background:#da3633; border:1px solid #da3633; color:#fff; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+  .team-delete-btn:hover { background:#f85149; }
+  
+  /* 移动端适配 */
+  @media(max-width:480px){
+    .rank-table { font-size:11px; }
+    .rank-table th, .rank-table td { padding:5px 3px; }
+    .tabs { gap:2px; }
+    .tab { min-width:60px; font-size:11px; padding:7px 3px; }
+    .attr-grid { grid-template-columns:repeat(3,1fr); gap:4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 鸿图之下武将数据分析工具</h1>
+  <p>武将图鉴 · 武技图鉴 · 武将对比</p>
+</div>
+
+<div class="stats" id="statsBox">
+  <div class="stat-card"><div class="val" id="sTotal">-</div><div class="lbl">武将总数</div></div>
+  <div class="stat-card"><div class="val" id="sFaction">-</div><div class="lbl">涉及阵营</div></div>
+  <div class="stat-card"><div class="val" id="sTroop">-</div><div class="lbl">兵种数</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('rank')">👤 武将图鉴</div>
+  <div class="tab" onclick="switchTab('skills')">⚡ 武技图鉴</div>
+  <div class="tab" onclick="switchTab('team')">🎯 配将</div>
+  <div class="tab" onclick="switchTab('compare')">⚔️ 武将对比</div>
+</div>
+
+<!-- ========== 武将图鉴 ========== -->
+<div id="tab-rank" class="content active">
+  <div class="filters">
+    <select id="fFaction" onchange="renderRank()"><option value="">全阵营</option></select>
+    <select id="fCost" onchange="renderRank()"><option value="">全cost</option></select>
+    <select id="fTroop" onchange="renderRank()"><option value="">全兵种</option></select>
+    <input type="text" id="fSearch" placeholder="搜索武将" oninput="renderRank()" style="width:100px;">
+  </div>
+  <div style="max-height:420px;overflow-y:auto;border-radius:6px;border:1px solid #30363d;">
+    <table class="rank-table" id="rankTable"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<!-- ========== 武技图鉴 ========== -->
+<div id="tab-skills" class="content">
+  <div class="filters">
+    <select id="skGrade" onchange="renderSkills()"><option value="">全等级</option></select>
+    <select id="skType" onchange="renderSkills()"><option value="">全类型</option></select>
+    <select id="skTag" onchange="renderSkills()"><option value="">全效果</option></select>
+    <input type="text" id="skSearch" placeholder="搜索武技名/武将" oninput="renderSkills()" style="width:120px;">
+  </div>
+  <div class="skill-stats" id="skillStats"></div>
+  <div style="max-height:420px;overflow-y:auto;border-radius:6px;border:1px solid #30363d;">
+    <table class="skill-table" id="skillTable"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<!-- ========== 配将 ========== -->
+<div id="tab-team" class="content">
+  <div class="team-container">
+    <!-- 主将 -->
+    <div class="team-hero-row">
+      <div class="team-hero-label">主将</div>
+      <div class="team-hero-slot" id="slot-main" onclick="openHeroPicker('main')">
+        <div class="team-hero-empty">+</div>
+      </div>
+      <div class="team-skills" id="skills-main">
+        <div class="team-skill-item team-skill-leader" id="leader-main">主将技</div>
+        <div class="team-skill-item team-skill-innate" id="innate-main">自带技</div>
+        <div class="team-skill-item team-skill-select" id="skill1-main" onclick="openSkillPicker('main',1)">+ 自选技</div>
+        <div class="team-skill-item team-skill-select" id="skill2-main" onclick="openSkillPicker('main',2)">+ 自选技</div>
+      </div>
+    </div>
+    <!-- 副将1 -->
+    <div class="team-hero-row">
+      <div class="team-hero-label">副将</div>
+      <div class="team-hero-slot" id="slot-sub1" onclick="openHeroPicker('sub1')">
+        <div class="team-hero-empty">+</div>
+      </div>
+      <div class="team-skills" id="skills-sub1">
+        <div class="team-skill-item team-skill-leader-disabled" id="leader-sub1">主将技</div>
+        <div class="team-skill-item team-skill-innate" id="innate-sub1">自带技</div>
+        <div class="team-skill-item team-skill-select" id="skill1-sub1" onclick="openSkillPicker('sub1',1)">+ 自选技</div>
+        <div class="team-skill-item team-skill-select" id="skill2-sub1" onclick="openSkillPicker('sub1',2)">+ 自选技</div>
+      </div>
+    </div>
+    <!-- 副将2 -->
+    <div class="team-hero-row">
+      <div class="team-hero-label">副将</div>
+      <div class="team-hero-slot" id="slot-sub2" onclick="openHeroPicker('sub2')">
+        <div class="team-hero-empty">+</div>
+      </div>
+      <div class="team-skills" id="skills-sub2">
+        <div class="team-skill-item team-skill-leader-disabled" id="leader-sub2">主将技</div>
+        <div class="team-skill-item team-skill-innate" id="innate-sub2">自带技</div>
+        <div class="team-skill-item team-skill-select" id="skill1-sub2" onclick="openSkillPicker('sub2',1)">+ 自选技</div>
+        <div class="team-skill-item team-skill-select" id="skill2-sub2" onclick="openSkillPicker('sub2',2)">+ 自选技</div>
+      </div>
+    </div>
+  </div>
+  <!-- 队伍六维总计 -->
+  <div class="team-stats">
+    <div class="team-stats-title">队伍六维总计(LV50)</div>
+    <table class="team-stats-table" id="teamStatsTable">
+      <thead>
+        <tr><th>武将</th><th>武力</th><th>防御</th><th>智力</th><th>速度</th><th>政治</th><th>魅力</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+        <tr style="font-weight:700;background:#1c2128;"><td>总计</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- 羁绊检测 -->
+  <div class="team-bonds" id="teamBonds"></div>
+  <!-- 队伍保存/读取 -->
+  <div class="team-save-bar">
+    <input type="text" id="teamSaveName" placeholder="队伍名称..." class="team-save-input">
+    <button class="team-save-btn" onclick="saveTeam()">💾 保存队伍</button>
+    <select id="savedTeams" onchange="loadTeam(this.value)" class="team-load-select">
+      <option value="">-- 已保存的队伍 --</option>
+    </select>
+    <button class="team-delete-btn" onclick="deleteTeam()">🗑️ 删除</button>
+  </div>
+</div>
+
+<!-- ========== 武将对比 ========== -->
+<div id="tab-compare" class="content">
+  <div class="compare-selector">
+    <div class="compare-select-group">
+      <label>武将①</label>
+      <select id="cHero1" onchange="renderCompare()"><option value="">选择武将...</option></select>
+    </div>
+    <div class="compare-vs">VS</div>
+    <div class="compare-select-group">
+      <label>武将②</label>
+      <select id="cHero2" onchange="renderCompare()"><option value="">选择武将...</option></select>
+    </div>
+  </div>
+  
+  <div id="compareSection" style="display:none;">
+    <!-- 战力总览 -->
+    <div class="compare-overview" id="compareOverview"></div>
+    
+    <!-- 六维对比 -->
+    <div class="compare-attrs" id="compareAttrs"></div>
+    
+    <!-- 详细数据 -->
+    <div class="compare-detail" id="compareDetail"></div>
+  </div>
+</div>
+
+<div class="footer">📊 数据来源：官网 · AI整理 · 仅供参考</div>
+
+<script src="heroes_data.js"></script>
+<script src="skills_data.js"></script>
+<script>
+// ===== 全局变量 =====
+let curRankData = [];
+const DIM_LABELS = { total:'六维属性', force:'武力', def:'防御', int:'智力', spd:'速度', pol:'政治', cha:'魅力' };
+const SORT_STATE = { col:'total', asc:false }; // 默认按六维属性倒序
+const DIM_EMOJI  = { total:'🏆', force:'⚔️', def:'🛡️', int:'🧠', spd:'💨', pol:'📋', cha:'✨' };
+const QUAL_COLORS = { S:'#ffd700', A:'#c0c0c0', B:'#a0522d', C:'#888' };
+
+// ===== 初始化 =====
+window.onload = function(){
+  buildFilters();
+  updateStats(HEROES);
+  renderRank();
+  buildSkillFilters();
+  renderSkills();
+};
+
+// ===== Tab切换 =====
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));
+  document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ===== 筛选器初始化 =====
+function buildFilters(){
+  const factions = [...new Set(HEROES.map(h=>h.faction))].sort();
+  const costs    = [...new Set(HEROES.map(h=>h.cost))].filter(c=>c).sort((a,b)=>a-b);
+  const troops   = [...new Set(HEROES.map(h=>h.troop))].filter(Boolean).sort();
+  
+  const sel = document.getElementById('fFaction');
+  factions.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o); });
+  costs.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent='cost '+c; document.getElementById('fCost').appendChild(o); });
+  troops.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; document.getElementById('fTroop').appendChild(o); });
+  
+  // 对比下拉
+  HEROES.forEach(h=>{
+    ['cHero1','cHero2'].forEach(sid=>{
+      const o=document.createElement('option'); o.value=h.name; o.textContent=h.name+' ['+h.faction+']'; document.getElementById(sid).appendChild(o);
+    });
+  });
+}
+
+// ===== 统计卡片 =====
+function updateStats(data){
+  document.getElementById('sTotal').textContent = data.length;
+  document.getElementById('sFaction').textContent = [...new Set(data.map(h=>h.faction))].length;
+  document.getElementById('sTroop').textContent = [...new Set(data.map(h=>h.troop))].length;
+}
+
+// 阵营颜色配置
+const FACTION_COLORS = {
+  '魏': '#3b82f6',  // 蓝色
+  '蜀': '#22c55e',  // 绿色
+  '吴': '#ef4444',  // 红色
+  '群': '#9ca3af',  // 灰色
+  '神': '#a855f7',  // 紫色
+  '其他': '#6b7280' // 深灰
+};
+
+// ===== 排行榜渲染 =====
+function renderRank(){
+  const fF=document.getElementById('fFaction').value;
+  const fC=document.getElementById('fCost').value;
+  const fT=document.getElementById('fTroop').value;
+  const search=document.getElementById('fSearch').value.trim().toLowerCase();
+  
+  curRankData = HEROES.filter(h=>{
+    if(fF && h.faction!==fF) return false;
+    if(fC && h.cost!=fC) return false;
+    if(fT && h.troop!==fT) return false;
+    if(search && !h.name.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  
+  // 计算50级属性
+  const calc50 = (h, attr) => h[attr] + h[attr+'G']*49;
+  const total50 = (h) => (h.force+h.forceG*49)+(h.def+h.defG*49)+(h.int+h.intG*49)+(h.spd+h.spdG*49)+(h.pol+h.polG*49)+(h.cha+h.chaG*49);
+  
+  // 排序
+  const sortCol = SORT_STATE.col || 'total50';
+  curRankData.sort((a,b)=>{
+    let va, vb;
+    if(sortCol==='total50'){ va=total50(a); vb=total50(b); }
+    else{ va=calc50(a,sortCol); vb=calc50(b,sortCol); }
+    return SORT_STATE.asc ? va-vb : vb-va;
+  });
+
+  updateStats(curRankData);
+  
+  const tbody = document.querySelector('#rankTable tbody');
+  tbody.innerHTML = '';
+  
+  const sortCols = [
+    {key:null, label:'排名', w:'50'},
+    {key:null, label:'头像', w:'50'},
+    {key:null, label:'武将名', w:'100'},
+    {key:null, label:'阵营', w:'50'},
+    {key:null, label:'cost', w:'50'},
+    {key:null, label:'兵种', w:'70'},
+    {key:'total50', label:'六维属性', w:'90'},
+    {key:'force', label:'武力', w:'70'},
+    {key:'def', label:'防御', w:'70'},
+    {key:'int', label:'智力', w:'70'},
+    {key:'spd', label:'速度', w:'70'},
+    {key:'pol', label:'政治', w:'70'},
+    {key:'cha', label:'魅力', w:'70'},
+  ];
+
+  const headerRow = document.querySelector('#rankTable thead');
+  headerRow.innerHTML = '<tr>'+sortCols.map(col=>{
+    if(!col.key){
+      return `<th style="min-width:${col.w}px;max-width:${col.w}px;user-select:none;">${col.label}</th>`;
+    }
+    const isActive = SORT_STATE.col===col.key;
+    const arrow = isActive ? (SORT_STATE.asc ? '↑' : '↓') : '⇅';
+    return `<th class="sortable-th" data-col="${col.key}" style="min-width:${col.w}px;max-width:${col.w}px;cursor:pointer;${isActive?'color:#58a6ff;background:#1f6feb22;':''}" title="点击排序">${col.label}${arrow}</th>`;
+  }).join('')+'<th class="resize-handle"></th></tr>';
+  
+  headerRow.querySelectorAll('.sortable-th').forEach(th=>{
+    th.onclick = ()=>{
+      const col = th.dataset.col;
+      if(SORT_STATE.col===col){
+        SORT_STATE.asc = !SORT_STATE.asc;
+      } else {
+        SORT_STATE.col = col;
+        SORT_STATE.asc = false;
+      }
+      renderRank();
+    };
+  });
+  
+  // 渲染行
+  curRankData.forEach((h,i)=>{
+    const rnk=i+1;
+    const rnkcls=rnk===1?'rank-1':rnk===2?'rank-2':rnk===3?'rank-3':'';
+    const fc='faction-'+h.faction;
+    const t5=total50(h);
+    const lv5=(attr)=>(h[attr]+h[attr+'G']*49).toFixed(1);
+    const dim=['force','def','int','spd','pol','cha'];
+
+    let cells = `
+      <td class="rank-num ${rnkcls}">${rnk}</td>
+      <td><img src="${h.iconUrl}" style="width:40px;height:40px;border-radius:4px;object-fit:cover;" loading="lazy"></td>
+      <td style="text-align:left;padding-left:8px;"><a href="javascript:showDetail('${h.name}')" style="color:#58a6ff;text-decoration:none;">${h.name}</a></td>
+      <td><span class="faction-tag ${fc}">${h.faction}</span></td>
+      <td>${h.cost}</td>
+      <td>${h.troop}</td>
+      <td><b style="color:#ffd700">${t5.toFixed(1)}</b></td>`;
+    dim.forEach(d=>{
+      cells += `<td>${lv5(d)}</td>`;
+    });
+    tbody.innerHTML += '<tr>'+cells+'<td class="resize-handle"></td></tr>';
+  });
+}
+// ===== 排序切换 =====
+function toggleSort(col){
+  if(SORT_STATE.col===col || (SORT_STATE.col===col.replace('total1','total50') && col.includes('total'))){
+    SORT_STATE.asc = !SORT_STATE.asc;
+  }else{
+    SORT_STATE.col = col.includes('total') ? 'total50' : col;
+    SORT_STATE.asc = false;
+  }
+  renderRank();
+}
+
+// ===== 表格列宽拖动 =====
+let resizeData = {active:false, startX:0, startW:0, th:null};
+document.addEventListener('mousedown', function(e){
+  if(e.target.classList.contains('resize-handle')){
+    const th = e.target.previousElementSibling;
+    if(th && (th.classList.contains('sortable-th') || th.textContent.trim())){
+      resizeData.active = true;
+      resizeData.startX = e.clientX;
+      resizeData.startW = th.offsetWidth;
+      resizeData.th = th;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    }
+  }
+});
+document.addEventListener('mousemove', function(e){
+  if(!resizeData.active) return;
+  const diff = e.clientX - resizeData.startX;
+  const newW = Math.max(40, resizeData.startW + diff);
+  resizeData.th.style.minWidth = newW+'px';
+  resizeData.th.style.maxWidth = newW+'px';
+});
+document.addEventListener('mouseup', function(){
+  if(resizeData.active){
+    resizeData.active = false;
+    document.body.style.cursor = '';
+  }
+});
+// ===== 武将详情 =====
+// 用一个新的临时div模拟页面
+let detailCache = {};
+
+function showDetail(name){
+  const h = HEROES.find(x=>x.name===name);
+  if(!h) return;
+  showDetailCore(h);
+}
+function showHeroDetail(name){
+  return showDetail(name);
+}
+function showDetailCore(h){
+  const html = `
+  <div style="padding:0 12px 40px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <img src="${h.iconUrl}" style="width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+      <div style="flex:1;">
+        <div class="hero-name">${h.name} <span class="faction-tag faction-${h.faction}">${h.faction}</span></div>
+        <div class="hero-meta">
+          <span>cost ${h.cost}</span><span>${h.troop}</span>
+          ${h.troopEv ? '<span>进化: '+h.troopEv.split(',').join('→')+'</span>' : ''}
+        </div>
+      </div>
+    </div>
+    
+    <div class="detail-radar" id="detailRadar"></div>
+    
+    <div class="attr-grid">
+      <div class="attr-card"><div class="aname">武力</div><div class="aval">${h.force.toFixed(1)}</div><div class="agrow">+${h.forceG}/级</div></div>
+      <div class="attr-card"><div class="aname">防御</div><div class="aval">${h.def.toFixed(1)}</div><div class="agrow">+${h.defG}/级</div></div>
+      <div class="attr-card"><div class="aname">智力</div><div class="aval">${h.int.toFixed(1)}</div><div class="agrow">+${h.intG}/级</div></div>
+      <div class="attr-card"><div class="aname">速度</div><div class="aval">${h.spd.toFixed(1)}</div><div class="agrow">+${h.spdG}/级</div></div>
+      <div class="attr-card"><div class="aname">政治</div><div class="aval">${h.pol.toFixed(1)}</div><div class="agrow">+${h.polG}/级</div></div>
+      <div class="attr-card"><div class="aname">魅力</div><div class="aval">${h.cha.toFixed(1)}</div><div class="agrow">+${h.chaG}/级</div></div>
+    </div>
+    
+    <div style="text-align:center;margin:8px 0;font-size:13px;color:#8b949e;">总属性 <span style="font-size:20px;font-weight:700;color:#ffd700;">${h.total.toFixed(1)}</span></div>
+    
+    ${h.msName ? `<div class="skill-block"><div class="skill-name">⚔️ 主战技 <span style="color:${QUAL_COLORS[h.msQual]||'#fff'}">${h.msQual||''}</span> ${h.msName}</div><div class="skill-desc">${h.msDesc||''}</div></div>` : ''}
+    ${h.ssName ? `<div class="skill-block"><div class="skill-name">🛡️ 自带技能 <span style="color:${QUAL_COLORS[h.ssQual]||'#fff'}">${h.ssQual||''}</span> ${h.ssName}</div><div class="skill-desc">${h.ssDesc||''}</div></div>` : ''}
+    ${h.esName ? `<div class="skill-block"><div class="skill-name">🔄 传承技能 <span style="color:${QUAL_COLORS[h.esQual]||'#fff'}">${h.esQual||''}</span> ${h.esName}</div><div class="skill-desc">${h.esDesc||''}</div></div>` : ''}
+    
+    ${h.bonds&&h.bonds.length ? `<div style="margin-top:10px;"><div style="font-size:13px;font-weight:600;margin-bottom:6px;">🔗 缘分</div>`+h.bonds.map(b=>`<div style="background:#0d1117;border-radius:6px;padding:6px 10px;margin-bottom:4px;font-size:12px;color:#8b949e;">${b}</div>`).join('')+`</div>` : ''}
+  </div>`;
+  
+  // 创建详情弹层
+  let modal = document.getElementById('detailModal');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'detailModal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:1000;overflow-y:auto;padding:10px;';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `<div style="max-width:600px;margin:0 auto;background:#0d1117;border-radius:12px;padding:15px;position:relative;">
+    <button onclick="document.getElementById('detailModal').style.display='none'" style="position:absolute;top:10px;right:10px;background:#21262d;border:1px solid #30363d;color:#e6edf3;padding:5px 12px;border-radius:6px;cursor:pointer;">✕</button>
+    ${html}
+  </div>`;
+  modal.style.display = 'block';
+  
+  setTimeout(()=>{
+    const rc = echarts.init(document.getElementById('detailRadar'));
+    rc.setOption({
+      backgroundColor:'transparent',
+      tooltip:{trigger:'item'},
+      radar:{
+        indicator:[{name:'武力',max:140},{name:'防御',max:140},{name:'智力',max:140},{name:'速度',max:140},{name:'政治',max:140},{name:'魅力',max:140}],
+        axisName:{color:'#8b949e',fontSize:12},
+        splitArea:{areaStyle:{color:['#161b22','#1c2128']}},
+        splitLine:{lineStyle:{color:'#30363d'}},
+        axisLine:{lineStyle:{color:'#30363d'}},
+      },
+      series:[{
+        type:'radar',
+        data:[{value:[h.force,h.def,h.int,h.spd,h.pol,h.cha],name:h.name,
+          lineStyle:{color:'#ff6b35',width:2},
+          areaStyle:{color:'rgba(255,107,53,0.3)'},
+          itemStyle:{color:'#ff6b35'},
+          label:{show:true,formatter:p=>p.value.toFixed(1),color:'#fff',fontSize:11}
+        }]
+      }]
+    });
+    window.addEventListener('resize',()=>rc&&rc.resize());
+  },50);
+}
+
+// ===== 武将模拟对战 =====
+// 战力权重配置
+const POWER_WEIGHTS = { force:0.30, def:0.20, int:0.20, spd:0.15, pol:0.075, cha:0.075 };
+const DIM_LABELS_CN = { force:'武力', def:'防御', int:'智力', spd:'速度', pol:'政治', cha:'魅力' };
+
+// 计算LV50属性
+function calcLv50(hero){ return { force:hero.force+hero.forceG*49, def:hero.def+hero.defG*49, int:hero.int+hero.intG*49, spd:hero.spd+hero.spdG*49, pol:hero.pol+hero.polG*49, cha:hero.cha+hero.chaG*49 }; }
+
+// 计算综合战力
+function calcPower(hero){
+  const a=calcLv50(hero);
+  let total=0;
+  Object.keys(POWER_WEIGHTS).forEach(k=>{ total += a[k]*POWER_WEIGHTS[k]; });
+  let bonus=0;
+  if(hero.ssQual==='S') bonus+=15;
+  else if(hero.ssQual==='A') bonus+=8;
+  if(hero.msQual==='S') bonus+=10;
+  else if(hero.msQual==='A') bonus+=5;
+  return Math.round(total*(1+bonus/100));
+}
+
+// 渲染对战对比
+function renderCompare(){
+  const n1=document.getElementById('cHero1').value;
+  const n2=document.getElementById('cHero2').value;
+  const section=document.getElementById('compareSection');
+  if(!n1||!n2||n1===n2){ section.style.display='none'; return; }
+  section.style.display='block';
+  const h1=HEROES.find(h=>h.name===n1);
+  const h2=HEROES.find(h=>h.name===n2);
+  const p1=calcPower(h1), p2=calcPower(h2);
+  const a1=calcLv50(h1), a2=calcLv50(h2);
+  const dims=['force','def','int','spd','pol','cha'];
+  const maxVal=Math.max(...dims.map(d=>Math.max(a1[d],a2[d])));
+  const total1=a1.force+a1.def+a1.int+a1.spd+a1.pol+a1.cha;
+  const total2=a2.force+a2.def+a2.int+a2.spd+a2.pol+a2.cha;
+  const winner=p1>p2?1:p2>p1?2:0;
+  const diffPct=Math.abs(p1-p2)/Math.max(p1,p2)*100;
+  
+  // 战力总览
+  const pct1=(p1/(p1+p2))*100;
+  document.getElementById('compareOverview').innerHTML=`
+    <div class="compare-power-label">⚔️ 综合战力</div>
+    <div class="compare-power-bar">
+      <div class="compare-power-side">
+        <img src="${h1.iconUrl}">
+        <div class="name" style="color:#3b82f6">${h1.name}</div>
+      </div>
+      <div class="compare-power-track">
+        <div class="compare-power-fill left" style="width:${pct1}%;">
+          <span class="compare-power-score">${p1}</span>
+        </div>
+      </div>
+      <div class="compare-power-track">
+        <div class="compare-power-fill right" style="width:${100-pct1}%;">
+          <span class="compare-power-score">${p2}</span>
+        </div>
+      </div>
+      <div class="compare-power-side">
+        <img src="${h2.iconUrl}">
+        <div class="name" style="color:#f97316">${h2.name}</div>
+      </div>
+    </div>
+    <div class="compare-power-result ${winner===1?'win':winner===2?'lose':'draw'}">
+      ${winner===1?`${h1.name} 领先 ${diffPct.toFixed(1)}%`:winner===2?`${h2.name} 领先 ${diffPct.toFixed(1)}%`:'势均力敌'}
+    </div>`;
+  
+  // 六维对比（两列布局）
+  const cols=dims.map((d,i)=>{
+    const v1=a1[d], v2=a2[d], diff=v1-v2;
+    const pctV1=(v1/maxVal)*100, pctV2=(v2/maxVal)*100;
+    return `<div class="compare-attr-card">
+      <div class="compare-attr-title">${DIM_LABELS_CN[d]}</div>
+      <div class="compare-attr-bar">
+        <span class="compare-attr-val" style="color:#3b82f6">${v1.toFixed(0)}</span>
+        <div class="compare-attr-track">
+          <div class="compare-attr-fill blue" style="width:${pctV1}%;"></div>
+        </div>
+      </div>
+      <div class="compare-attr-bar">
+        <span class="compare-attr-val" style="color:#f97316">${v2.toFixed(0)}</span>
+        <div class="compare-attr-track">
+          <div class="compare-attr-fill orange" style="width:${pctV2}%;"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:6px;">
+        <span class="compare-attr-diff ${diff>0?'positive':diff<0?'negative':'neutral'}">${diff>=0?'+':''}${diff.toFixed(1)}</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('compareAttrs').innerHTML=cols;
+  
+  // 详细数据表
+  const tr1=dims.map((d,i)=>`<tr><td>${DIM_LABELS_CN[d]}</td><td class="val-blue">${a1[d].toFixed(1)}</td><td class="val-orange">${a2[d].toFixed(1)}</td><td>${(a1[d]-a2[d])>=0?'+':''}${(a1[d]-a2[d]).toFixed(1)}</td></tr>`).join('');
+  document.getElementById('compareDetail').innerHTML=`
+    <div class="compare-detail-title">📊 详细属性对比 (LV50)</div>
+    <table class="compare-detail-table">
+      <thead><tr><th>维度</th><th>${h1.name}</th><th>${h2.name}</th><th>差值</th></tr></thead>
+      <tbody>${tr1}</tbody>
+    </table>
+    <div class="compare-detail-title" style="margin-top:15px;">🏆 战力构成分析</div>
+    <table class="compare-detail-table">
+      <thead><tr><th>维度</th><th>权重</th><th>${h1.name}贡献</th><th>${h2.name}贡献</th><th>优势方</th></tr></thead>
+      <tbody>
+        ${dims.map(d=>{
+          const c1=(a1[d]*POWER_WEIGHTS[d]).toFixed(1);
+          const c2=(a2[d]*POWER_WEIGHTS[d]).toFixed(1);
+          const win=c1>c2?h1.name:c2>c1?h2.name:'平';
+          return `<tr><td>${DIM_LABELS_CN[d]}</td><td>${(POWER_WEIGHTS[d]*100).toFixed(0)}%</td><td class="val-blue">${c1}</td><td class="val-orange">${c2}</td><td class="${win===h1.name?'diff-positive':win===h2.name?'diff-negative':'diff-neutral'}">${win}</td></tr>`;
+        }).join('')}
+        <tr style="font-weight:700;background:#1c2128;"><td>总战力</td><td>100%</td><td class="val-blue">${p1}</td><td class="val-orange">${p2}</td><td class="${winner===1?'diff-positive':winner===2?'diff-negative':'diff-neutral'}">${winner===1?h1.name:winner===2?h2.name:'平'}</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;font-size:12px;color:#8b949e;">
+      <b>技能加成说明：</b>S级自带技+15%，A级+8%；S级主将技+10%，A级+5%
+    </div>`;
+}// ===== 武技图鉴 =====
+let curSkills = [];
+let skillSortCol = 'gradeNum';
+let skillSortAsc = false;
+
+function buildSkillFilters(){
+  const gradeSel = document.getElementById('skGrade');
+  const typeSel = document.getElementById('skType');
+  const tagSel = document.getElementById('skTag');
+  
+  ['S','A','B'].forEach(g=>{
+    const o = document.createElement('option'); o.value=g; o.textContent=g+'级'; gradeSel.appendChild(o);
+  });
+  
+  const types = [...new Set(SKILLS.map(s=>s.type))].sort();
+  types.forEach(t=>{
+    const o = document.createElement('option'); o.value=t; o.textContent=t; typeSel.appendChild(o);
+  });
+  
+  SKILL_STATS.allTags.forEach(t=>{
+    const o = document.createElement('option'); o.value=t; o.textContent=t; tagSel.appendChild(o);
+  });
+}
+
+function renderSkills(){
+  const fGrade = document.getElementById('skGrade').value;
+  const fType = document.getElementById('skType').value;
+  const fTag = document.getElementById('skTag').value;
+  const search = document.getElementById('skSearch').value.trim().toLowerCase();
+  
+  curSkills = SKILLS.filter(s=>{
+    if(fGrade && s.grade !== fGrade) return false;
+    if(fType && s.type !== fType) return false;
+    if(fTag && !s.tags.includes(fTag)) return false;
+    if(search && !s.name.toLowerCase().includes(search) && !s.hero.toLowerCase().includes(search)) return false;
+    return true;
+  });
+  
+  // 排序
+  curSkills.sort((a,b)=>{
+    let va = a[skillSortCol], vb = b[skillSortCol];
+    if(skillSortCol === 'name' || skillSortCol === 'type'){
+      va = (va||'').toString(); vb = (vb||'').toString();
+      return skillSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return skillSortAsc ? va - vb : vb - va;
+  });
+  
+  // 渲染统计
+  document.getElementById('skillStats').innerHTML = 
+    `<span style="color:#8b949e;font-size:12px;">共 <b style="color:#58a6ff;">${curSkills.length}</b> 个武技</span>`;
+  
+  // 渲染表头
+  const headerRow = document.querySelector('#skillTable thead');
+  const cols = [
+    {key:'gradeNum', label:'等级'},
+    {key:'name', label:'图标'},
+    {key:'name', label:'名称'},
+    {key:'type', label:'类型'},
+    {key:'troops', label:'适配兵种'},
+    {key:'rate', label:'发动率'},
+    {key:'hero', label:'武将'},
+    {key:'tags', label:'效果标签'},
+    {key:'desc', label:'描述(LV50)'}
+  ];
+  headerRow.innerHTML = '<tr>'+cols.map(c=>{
+    const isActive = skillSortCol===c.key;
+    const arrow = isActive ? (skillSortAsc ? '↑' : '↓') : '';
+    const sortable = ['gradeNum','name','type','rate'].includes(c.key);
+    const style = isActive ? 'style="color:#58a6ff;cursor:pointer;"' : (sortable ? 'style="cursor:pointer;"' : '');
+    const click = sortable ? `onclick="toggleSkillSort('${c.key}')"` : '';
+    return `<th ${style} ${click}>${c.label}${arrow}</th>`;
+  }).join('')+'</tr>';
+  
+  // 渲染表格
+  const tbody = document.querySelector('#skillTable tbody');
+  tbody.innerHTML = curSkills.map(s=>{
+    const typeCls = 'type-'+s.type;
+    const gradeCls = 'grade-'+s.grade;
+    const tagsHtml = s.tags.map(t=>`<span class="skill-tag">${t}</span>`).join('');
+    const troopsHtml = s.troops.slice(0,4).join('/');
+    const troopsStyle = "font-size:11px;";
+    return `<tr onclick="showHeroDetail('${s.hero}')" style="cursor:pointer;">
+      <td><span class="skill-grade ${gradeCls}">${s.grade}</span></td>
+      <td><img src="${s.icon}" class="skill-icon" loading="lazy"></td>
+      <td style="text-align:left;font-weight:600;">${s.name}</td>
+      <td><span class="skill-type ${typeCls}">${s.type}</span></td>
+      <td style="font-size:11px;color:#8b949e;">${troopsHtml}</td>
+      <td>${(s.rate*100).toFixed(0)}%</td>
+      <td style="font-size:11px;color:#8b949e;">${s.hero||'-'}</td>
+      <td>${tagsHtml||'-'}</td>
+      <td style="text-align:left;font-size:11px;color:#8b949e;max-width:250px;">${s.descMax||s.desc}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleSkillSort(col){
+  if(skillSortCol === col){
+    skillSortAsc = !skillSortAsc;
+  }else{
+    skillSortCol = col;
+    skillSortAsc = false;
+  }
+  renderSkills();
+}
+
+// ===== 配将系统 =====
+const TEAM = { main: null, sub1: null, sub2: null };
+const TEAM_SKILLS = { main: [null, null], sub1: [null, null], sub2: [null, null] };
+
+function openHeroPicker(slot){
+  currentPickingSlot = slot;
+  const factions = [...new Set(HEROES.map(h=>h.faction))].sort();
+  const troops = [...new Set(HEROES.map(h=>h.troop))].filter(Boolean).sort();
+  const costs = [...new Set(HEROES.map(h=>h.cost))].filter(c=>c).sort((a,b)=>a-b);
+  
+  const modal = document.createElement('div');
+  modal.className = 'picker-modal';
+  modal.id = 'heroPickerModal';
+  modal.innerHTML = `
+    <div class="picker-content">
+      <div class="picker-header">
+        <div class="picker-title">选择武将</div>
+        <button class="picker-close" onclick="document.getElementById('heroPickerModal').remove()">✕</button>
+      </div>
+      <div class="picker-filters">
+        <select id="hpFaction" onchange="filterHeroPickerWithFilters()"><option value="">全阵营</option>${factions.map(f=>`<option value="${f}">${f}</option>`).join('')}</select>
+        <select id="hpTroop" onchange="filterHeroPickerWithFilters()"><option value="">全兵种</option>${troops.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+        <select id="hpCost" onchange="filterHeroPickerWithFilters()"><option value="">全cost</option>${costs.map(c=>`<option value="${c}">${c}费</option>`).join('')}</select>
+      </div>
+      <input type="text" class="picker-search" placeholder="搜索武将名..." oninput="filterHeroPickerWithFilters()">
+      <div class="picker-grid" id="heroPickerGrid"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  filterHeroPickerWithFilters();
+}
+
+function filterHeroPickerWithFilters(){
+  const q = document.querySelector('#heroPickerModal .picker-search').value.trim().toLowerCase();
+  const fF = document.getElementById('hpFaction').value;
+  const fT = document.getElementById('hpTroop').value;
+  const fC = document.getElementById('hpCost').value;
+  const slot = currentPickingSlot;
+  
+  const grid = document.getElementById('heroPickerGrid');
+  
+  // 排除已在队伍中的
+  const usedNames = [];
+  ['main','sub1','sub2'].forEach(s => { if(TEAM[s]) usedNames.push(TEAM[s].name); });
+  
+  grid.innerHTML = HEROES.filter(h => {
+    if(usedNames.includes(h.name)) return false;
+    if(fF && h.faction !== fF) return false;
+    if(fT && h.troop !== fT) return false;
+    if(fC && h.cost != fC) return false;
+    if(q && !h.name.toLowerCase().includes(q)) return false;
+    return true;
+  }).map(h => `
+    <div class="picker-hero" onclick="selectHero('${slot}', '${h.name}')">
+      <img src="${h.iconUrl}" class="picker-hero-img">
+      <div class="picker-hero-name">${h.name}</div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:20px;color:#8b949e;">无匹配武将</div>';
+}
+
+let currentPickingSlot = '';
+
+function selectHero(slot, heroName){
+  currentPickingSlot = slot;
+  const hero = HEROES.find(h => h.name === heroName);
+  if(!hero) return;
+  
+  // 检查是否已被选择
+  if(TEAM.main === hero || TEAM.sub1 === hero || TEAM.sub2 === hero){
+    alert('该武将已在队伍中');
+    return;
+  }
+  
+  TEAM[slot] = hero;
+  TEAM_SKILLS[slot] = [null, null];
+  
+  // 更新UI
+  const slotEl = document.getElementById('slot-' + slot);
+  slotEl.className = 'team-hero-slot filled';
+  slotEl.innerHTML = `
+    <div class="team-hero-content">
+      <img src="${hero.iconUrl}" class="team-hero-img">
+      <div class="team-hero-name">${hero.name}</div>
+    </div>
+  `;
+  slotEl.onclick = () => openHeroPicker(slot);
+  
+  // 更新主将技显示
+  const leaderEl = document.getElementById('leader-' + slot);
+  if(slot === 'main'){
+    leaderEl.textContent = hero.msName || '主将技';
+    leaderEl.title = hero.msDesc || '';
+    leaderEl.style.color = '#ff6b35';
+    leaderEl.style.borderColor = '#ff6b3544';
+    leaderEl.style.background = '#ff6b3511';
+    leaderEl.style.cursor = 'default';
+  } else {
+    leaderEl.textContent = '主将技';
+    leaderEl.title = hero.msName ? `主将专属: ${hero.msName}` : '非主将位';
+    leaderEl.style.color = '#484f58';
+    leaderEl.style.borderColor = '#30363d';
+    leaderEl.style.background = '#21262d';
+  }
+  
+  // 更新自带技显示
+  const innateEl = document.getElementById('innate-' + slot);
+  innateEl.textContent = hero.ssName || '自带技';
+  innateEl.title = hero.ssDesc || '';
+  
+  // 清空自选技
+  [1, 2].forEach(i => {
+    const skillEl = document.getElementById('skill' + i + '-' + slot);
+    skillEl.textContent = '+ 自选技';
+    skillEl.className = 'team-skill-item team-skill-select';
+  });
+  
+  document.getElementById('heroPickerModal')?.remove();
+  updateTeamStats();
+  updateTeamBonds();
+}
+
+function openSkillPicker(slot, idx){
+  if(!TEAM[slot]){
+    alert('请先选择武将');
+    return;
+  }
+  currentPickingSlot = slot;
+  
+  const types = [...new Set(SKILLS.map(s=>s.type))].sort();
+  const grades = ['S','A','B'];
+  
+  const modal = document.createElement('div');
+  modal.className = 'picker-modal';
+  modal.id = 'skillPickerModal';
+  modal.innerHTML = `
+    <div class="picker-content">
+      <div class="picker-header">
+        <div class="picker-title">选择武技 (位置${idx})</div>
+        <button class="picker-close" onclick="document.getElementById('skillPickerModal').remove()">✕</button>
+      </div>
+      <div class="picker-filters">
+        <select id="spType" onchange="filterSkillPickerWithFilters(${idx})"><option value="">全类型</option>${types.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+        <select id="spGrade" onchange="filterSkillPickerWithFilters(${idx})"><option value="">全等级</option>${grades.map(g=>`<option value="${g}">${g}级</option>`).join('')}</select>
+      </div>
+      <input type="text" class="picker-search" placeholder="搜索武技名..." oninput="filterSkillPickerWithFilters(${idx})">
+      <div class="picker-skill-list" id="skillPickerList"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  filterSkillPickerWithFilters(idx);
+}
+
+function filterSkillPickerWithFilters(idx){
+  const q = document.querySelector('#skillPickerModal .picker-search').value.trim().toLowerCase();
+  const fType = document.getElementById('spType').value;
+  const fGrade = document.getElementById('spGrade').value;
+  const slot = currentPickingSlot;
+  
+  const list = document.getElementById('skillPickerList');
+  
+  // 排除已在队伍中的
+  const usedNames = [];
+  ['main','sub1','sub2'].forEach(s => {
+    TEAM_SKILLS[s].forEach(sk => { if(sk) usedNames.push(sk.name); });
+  });
+  
+  list.innerHTML = SKILLS.filter(s => {
+    if(usedNames.includes(s.name)) return false;
+    if(fType && s.type !== fType) return false;
+    if(fGrade && s.grade !== fGrade) return false;
+    if(q && !s.name.toLowerCase().includes(q) && !s.desc.toLowerCase().includes(q)) return false;
+    return true;
+  }).map(s => `
+    <div class="picker-skill" onclick="selectSkill('${slot}', ${idx}, '${s.name}')">
+      <div class="picker-skill-name">${s.name} <span style="color:${QUAL_COLORS[s.grade]||'#fff'}">${s.grade}</span></div>
+      <div class="picker-skill-meta">${s.type} · 发动率${(s.rate*100).toFixed(0)}% · ${s.hero||'通用'}</div>
+      <div class="picker-skill-desc">${s.desc}</div>
+    </div>
+  `).join('') || '<div style="text-align:center;padding:20px;color:#8b949e;">无匹配武技</div>';
+}
+
+function selectSkill(slot, idx, skillName){
+  const skill = SKILLS.find(s => s.name === skillName);
+  if(!skill) return;
+  
+  TEAM_SKILLS[slot][idx-1] = skill;
+  
+  const skillEl = document.getElementById('skill' + idx + '-' + slot);
+  skillEl.textContent = skill.name;
+  skillEl.className = 'team-skill-item team-skill-select filled';
+  skillEl.title = skill.desc;
+  
+  document.getElementById('skillPickerModal')?.remove();
+}
+
+function updateTeamStats(){
+  const slots = ['main', 'sub1', 'sub2'];
+  const tbody = document.querySelector('#teamStatsTable tbody');
+  let totals = { force:0, def:0, int:0, spd:0, pol:0, cha:0 };
+  
+  const rows = slots.map((slot, i) => {
+    const hero = TEAM[slot];
+    if(!hero) return `<tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;
+    
+    const lv50 = (base, growth) => base + growth * 49;
+    const attrs = {
+      force: lv50(hero.force, hero.forceG),
+      def: lv50(hero.def, hero.defG),
+      int: lv50(hero.int, hero.intG),
+      spd: lv50(hero.spd, hero.spdG),
+      pol: lv50(hero.pol, hero.polG),
+      cha: lv50(hero.cha, hero.chaG)
+    };
+    
+    Object.keys(attrs).forEach(k => totals[k] += attrs[k]);
+    
+    return `<tr>
+      <td>${hero.name}</td>
+      <td>${attrs.force.toFixed(1)}</td>
+      <td>${attrs.def.toFixed(1)}</td>
+      <td>${attrs.int.toFixed(1)}</td>
+      <td>${attrs.spd.toFixed(1)}</td>
+      <td>${attrs.pol.toFixed(1)}</td>
+      <td>${attrs.cha.toFixed(1)}</td>
+    </tr>`;
+  });
+  
+  rows.push(`<tr style="font-weight:700;background:#1c2128;">
+    <td>总计</td>
+    <td>${totals.force.toFixed(1)}</td>
+    <td>${totals.def.toFixed(1)}</td>
+    <td>${totals.int.toFixed(1)}</td>
+    <td>${totals.spd.toFixed(1)}</td>
+    <td>${totals.pol.toFixed(1)}</td>
+    <td>${totals.cha.toFixed(1)}</td>
+  </tr>`);
+  
+  tbody.innerHTML = rows.join('');
+}
+
+function updateTeamBonds(){
+  const bondsDiv = document.getElementById('teamBonds');
+  const heroes = [TEAM.main, TEAM.sub1, TEAM.sub2].filter(Boolean);
+  if(heroes.length === 0){
+    bondsDiv.innerHTML = '';
+    return;
+  }
+  
+  // 检测阵营羁绊
+  const factions = {};
+  heroes.forEach(h => {
+    factions[h.faction] = (factions[h.faction] || 0) + 1;
+  });
+  
+  let bondsHtml = '';
+  Object.entries(factions).forEach(([faction, count]) => {
+    if(count >= 2){
+      bondsHtml += `<div class="team-bond-item">${faction}阵营羁绊 (${count}人)</div>`;
+    }
+  });
+  
+  // 检测缘分羁绊
+  const allBonds = new Set();
+  heroes.forEach(h => {
+    if(h.bonds) h.bonds.forEach(b => allBonds.add(b));
+  });
+  
+  allBonds.forEach(bond => {
+    // 简单检测：如果缘分字符串中包含所有武将名，则认为激活
+    const bondHeroes = bond.split(/[,，、]/).map(s => s.trim()).filter(Boolean);
+    const heroNames = heroes.map(h => h.name);
+    const matched = bondHeroes.filter(name => heroNames.includes(name)).length;
+    if(matched >= 2){
+      bondsHtml += `<div class="team-bond-item">${bond}</div>`;
+    }
+  });
+  
+  bondsDiv.innerHTML = bondsHtml || '<div class="team-bond-item team-bond-inactive">暂无激活羁绊</div>';
+}
+
+// ===== 队伍保存/读取 =====
+function getSavedTeams(){
+  const saved = localStorage.getItem('hontos_teams');
+  return saved ? JSON.parse(saved) : {};
+}
+
+function saveTeam(){
+  const name = document.getElementById('teamSaveName').value.trim();
+  if(!name){ alert('请输入队伍名称'); return; }
+  if(!TEAM.main && !TEAM.sub1 && !TEAM.sub2){ alert('请至少选择一名武将'); return; }
+  
+  const data = {
+    team: {
+      main: TEAM.main ? { name: TEAM.main.name, id: TEAM.main.id } : null,
+      sub1: TEAM.sub1 ? { name: TEAM.sub1.name, id: TEAM.sub1.id } : null,
+      sub2: TEAM.sub2 ? { name: TEAM.sub2.name, id: TEAM.sub2.id } : null
+    },
+    skills: {
+      main: TEAM_SKILLS.main,
+      sub1: TEAM_SKILLS.sub1,
+      sub2: TEAM_SKILLS.sub2
+    },
+    savedAt: new Date().toISOString()
+  };
+  
+  const teams = getSavedTeams();
+  teams[name] = data;
+  localStorage.setItem('hontos_teams', JSON.stringify(teams));
+  
+  refreshSavedTeamsList();
+  document.getElementById('teamSaveName').value = '';
+  alert('队伍已保存: ' + name);
+}
+
+function loadTeam(name){
+  if(!name) return;
+  const teams = getSavedTeams();
+  const data = teams[name];
+  if(!data) return;
+  
+  // 清除当前选择
+  TEAM.main = null; TEAM.sub1 = null; TEAM.sub2 = null;
+  TEAM_SKILLS.main = [null, null];
+  TEAM_SKILLS.sub1 = [null, null];
+  TEAM_SKILLS.sub2 = [null, null];
+  
+  // 恢复武将
+  ['main','sub1','sub2'].forEach(slot => {
+    const heroData = data.team[slot];
+    if(heroData && heroData.id){
+      const hero = HEROES.find(h => h.id === heroData.id);
+      if(hero){
+        TEAM[slot] = hero;
+        updateTeamSlotUI(slot, hero);
+      }
+    }
+  });
+  
+  // 恢复技能
+  ['main','sub1','sub2'].forEach(slot => {
+    if(TEAM[slot]){
+      TEAM_SKILLS[slot] = data.skills[slot] || [null, null];
+      updateTeamSkillUI(slot);
+    }
+  });
+  
+  updateTeamStats();
+  updateTeamBonds();
+}
+
+function deleteTeam(){
+  const select = document.getElementById('savedTeams');
+  const name = select.value;
+  if(!name){ alert('请选择一个要删除的队伍'); return; }
+  if(!confirm('确定删除队伍 "' + name + '" 吗？')) return;
+  
+  const teams = getSavedTeams();
+  delete teams[name];
+  localStorage.setItem('hontos_teams', JSON.stringify(teams));
+  
+  refreshSavedTeamsList();
+}
+
+function refreshSavedTeamsList(){
+  const teams = getSavedTeams();
+  const select = document.getElementById('savedTeams');
+  select.innerHTML = '<option value="">-- 已保存的队伍 --</option>' + 
+    Object.keys(teams).map(name => `<option value="${name}">${name}</option>`).join('');
+}
+
+function updateTeamSlotUI(slot, hero){
+  const slotEl = document.getElementById('slot-' + slot);
+  if(hero){
+    slotEl.className = 'team-hero-slot filled';
+    slotEl.innerHTML = `
+      <div class="team-hero-content">
+        <img src="${hero.iconUrl}" class="team-hero-img">
+        <div class="team-hero-name">${hero.name}</div>
+      </div>`;
+    slotEl.onclick = () => openHeroPicker(slot);
+    
+    const leaderEl = document.getElementById('leader-' + slot);
+    if(slot === 'main'){
+      leaderEl.textContent = hero.msName || '主将技';
+      leaderEl.title = hero.msDesc || '';
+      leaderEl.style.color = '#ff6b35';
+      leaderEl.style.borderColor = '#ff6b3544';
+      leaderEl.style.background = '#ff6b3511';
+      leaderEl.style.cursor = 'default';
+    }
+    const innateEl = document.getElementById('innate-' + slot);
+    innateEl.textContent = hero.ssName || '自带技';
+    innateEl.title = hero.ssDesc || '';
+  }
+}
+
+function updateTeamSkillUI(slot){
+  for(let i = 1; i <= 2; i++){
+    const skillEl = document.getElementById('skill' + i + '-' + slot);
+    const skill = TEAM_SKILLS[slot][i-1];
+    if(skill){
+      skillEl.textContent = skill.name;
+      skillEl.className = 'team-skill-item';
+      skillEl.title = skill.desc || '';
+    }
+  }
+}
+
+// 初始化加载已保存的队伍列表
+refreshSavedTeamsList();
+
+</script>
+</body>
+</html>
