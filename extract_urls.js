@@ -1,0 +1,10 @@
+const fs = require('fs');
+const data = fs.readFileSync('heroes_data.js', 'utf8');
+const heroes = JSON.parse(data.replace('const HEROES=','').replace(/;$/,''));
+const urls = heroes.map(h => h.iconUrl).filter(Boolean);
+const uniqueUrls = [...new Set(urls)];
+console.log('总武将:', heroes.length);
+console.log('头像URL数:', urls.length);
+console.log('去重后:', uniqueUrls.length);
+fs.writeFileSync('icon_urls.txt', uniqueUrls.join('\n'));
+console.log('已保存到 icon_urls.txt');
