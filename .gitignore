@@ -1,0 +1,7 @@
+﻿# 腾讯CDN图标（可通过网络访问，不入库
+# 如果离线使用可注释掉下行，改用本地 icons/
+*.png
+
+# IDE / OS
+.DS_Store
+Thumbs.db
